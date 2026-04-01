@@ -1,5 +1,6 @@
 *.fits
 *.fit
 *.fts
+*.parquet
 __pycache__/
 .ipynb_checkpoints/
