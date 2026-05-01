@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import json; nb=json.load\\(open\\('lab8.ipynb', encoding='utf-8'\\)\\); print\\('n_cells:', len\\(nb['cells']\\)\\); [print\\(f'Cell {i}: id={c.get\\(\\\\\"id\\\\\",\\\\\"N/A\\\\\"\\)} type={c[\\\\\"cell_type\\\\\"]}'\\) for i,c in enumerate\\(nb['cells']\\)]\")",
+      "Bash(python -c ' *)"
+    ]
+  }
+}
