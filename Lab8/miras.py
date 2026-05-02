@@ -11,70 +11,35 @@ from scipy.signal import find_peaks
 from GeneralFourierSeries import FourierSeries
 
 # ─── Parámetros ───────────────────────────────────────────────────────────────
-GRAFICAR_OG          = False  # Mostrar curvas foldeadas SIN detrending
-GRAFICAR_DT          = True   # Mostrar curvas foldeadas CON detrending
-GRAFICAR_DIAGNOSTICO = True   # Mostrar curva original + modelo de tendencia larga
-
-LONG_PERIOD_FACTOR = 8.5   # T_largo debe ser > FACTOR × T_corto (separa ambas oscilaciones)
-N_TERMS_LONG       = 6   # Términos de Fourier para el modelo de tendencia larga
+LONG_PERIOD_FACTOR = 9  # T_largo debe ser > FACTOR × T_corto (separa ambas oscilaciones)
+N_TERMS_LONG       = 2 # Términos de Fourier para el modelo de tendencia larga
 # ─────────────────────────────────────────────────────────────────────────────
 
-files = [
-    "Lab8/data/mira/OGLE-BLG-LPV-060312.dat",
-    "Lab8/data/mira/OGLE-BLG-LPV-086116.dat",
-    "Lab8/data/mira/OGLE-BLG-LPV-168070.dat",
-    "Lab8/data/mira/OGLE-BLG-LPV-192393.dat",
-]
+DATA_DIR = "Lab8/data_selected"
+N_FILES  = 5  # cuántos archivos más pesados usar
 
-# Parámetros de detrending por archivo (None → usa el valor global de arriba)
-FILE_PARAMS = [
-    {"LONG_PERIOD_FACTOR": None, "N_TERMS_LONG": None},  # 060312
-    {"LONG_PERIOD_FACTOR": 9, "N_TERMS_LONG": 1},  # 086116
-    {"LONG_PERIOD_FACTOR": 6, "N_TERMS_LONG": 3},  # 168070
-    {"LONG_PERIOD_FACTOR": 6, "N_TERMS_LONG": 4},  # 192393
+_all_csvs = [
+    os.path.join(DATA_DIR, f)
+    for f in os.listdir(DATA_DIR)
+    if f.endswith(".csv")
 ]
+files = sorted(_all_csvs, key=os.path.getsize, reverse=True)[:N_FILES]
 
 for file in files:
-        df = pd.read_csv(file, sep=" ", names=["hjd","I","inc_I"])
-        id = file.split("-")[3]
-        t, mag = df["hjd"], df["I"]
-        frequency, power = LombScargle(t, mag).autopower(
-                method="fast")
-        periods = 1 / frequency
-        # Normalizar
-        power = power / power.max()
-
-        best_frequency = frequency[np.argmax(power)]
-        best_period    = 1 / best_frequency
-        phases0 = get_phases(t,mag,best_period)
-        phases1 = phases0 + 1
-        phases   = np.append(phases0, phases1)
-        mag_plot = np.append(mag, mag.copy())
-
-        if GRAFICAR_OG:
-                plt.scatter(phases, mag_plot, c="black", s=2)
-                plt.tight_layout()
-                plt.title(f"Estrella: {id}, período: {best_period}:.4f")
-                plt.show()
-
-
-# ─── Detrending con Fourier ───────────────────────────────────────────────────
-for file, fparams in zip(files, FILE_PARAMS):
-        df = pd.read_csv(file, sep=" ", names=["hjd","I","inc_I"])
-        id = file.split("-")[3]
-        t, mag = df["hjd"].values, df["I"].values
+        df = pd.read_csv(file)
+        id = os.path.splitext(os.path.basename(file))[0].split("-")[-1]
+        t, mag = df["t"].values, df["y"].values
         mag = mag - mag.mean()
 
-        # Parámetros efectivos: usa el valor por archivo si está definido, si no el global
-        lpf = fparams["LONG_PERIOD_FACTOR"] if fparams["LONG_PERIOD_FACTOR"] is not None else LONG_PERIOD_FACTOR
-        ntl = fparams["N_TERMS_LONG"]       if fparams["N_TERMS_LONG"]       is not None else N_TERMS_LONG
+        lpf = LONG_PERIOD_FACTOR
+        ntl = N_TERMS_LONG
 
-        # Período corto (igual que arriba)
+        # Período corto
         frequency, power = LombScargle(t, mag).autopower(method="fast")
         best_frequency = frequency[np.argmax(power)]
-        best_period = 1.0 / best_frequency
+        best_period    = 1.0 / best_frequency
 
-        # Período largo: buscar solo en frecuencias < best_frequency / lpf
+        # Período largo
         min_freq_long = 1.0 / (t.max() - t.min())
         max_freq_long = best_frequency / lpf
         if max_freq_long <= min_freq_long:
@@ -90,46 +55,55 @@ for file, fparams in zip(files, FILE_PARAMS):
                 minimum_frequency=min_freq_long,
                 maximum_frequency=max_freq_long,
         )
-        long_freq = freq_long[np.argmax(power_long)]
+        long_freq   = freq_long[np.argmax(power_long)]
         long_period = 1.0 / long_freq
 
-        # Modelar la oscilación larga con FourierSeries
+        # Modelo de tendencia larga
         fs = FourierSeries(n_terms=ntl, base_freq=long_freq)
         fs.fit(t, mag)
         trend = fs(t)
 
-        # Gráfica diagnóstico: curva original + modelo de tendencia larga
-        if GRAFICAR_DIAGNOSTICO:
-                t_ord = np.argsort(t)
-                plt.figure(figsize=(10, 4))
-                plt.scatter(t, mag, c="black", s=1, label="Datos originales")
-                plt.plot(
-                        t[t_ord], trend[t_ord],
-                        c="red", lw=1.5,
-                        label=f"Modelo Fourier (T≈{long_period:.1f} d, {ntl} términos)",
-                )
-                plt.xlabel("HJD")
-                plt.ylabel("I")
-                plt.gca().invert_yaxis()
-                plt.legend()
-                plt.title(f"Estrella: {id} — evaluación del detrending  [lpf={lpf}, ntl={ntl}]")
-                plt.tight_layout()
-                plt.show()
-
-        # Detrending: restar la tendencia larga conservando la magnitud media
+        # Detrending
         mag_detrended = mag - trend + np.mean(trend)
 
-        # Foldear los datos detrended con el período corto
-        phases0 = get_phases(t, mag_detrended, best_period)
-        phases1 = phases0 + 1
-        phases   = np.append(phases0, phases1)
-        mag_plot = np.append(mag_detrended, mag_detrended.copy())
+        # Fases sin detrending
+        phases0_og = get_phases(t, mag, best_period)
+        phases_og  = np.append(phases0_og, phases0_og + 1)
+        mag_og     = np.append(mag, mag)
 
-        if GRAFICAR_DT:
-                plt.scatter(phases, mag_plot, c="black", s=2)
-                plt.tight_layout()
-                plt.title(
-                        f"Estrella: {id} [detrended]\n"
-                        f"T_corto={best_period:.2f} d  |  T_largo≈{long_period:.1f} d  [lpf={lpf}, ntl={ntl}]"
-                )
-                plt.show()
+        # Fases con detrending
+        phases0_dt = get_phases(t, mag_detrended, best_period)
+        phases_dt  = np.append(phases0_dt, phases0_dt + 1)
+        mag_dt     = np.append(mag_detrended, mag_detrended)
+
+        # ── Figura con 3 paneles ──────────────────────────────────────────────
+        fig, axes = plt.subplots(1, 3, figsize=(16, 4))
+        fig.suptitle(f"Estrella: {id}  |  T_corto={best_period:.2f} d  |  T_largo≈{long_period:.1f} d  [lpf={lpf}, ntl={ntl}]")
+
+        # Panel 1: serie de tiempo + modelo largo
+        t_ord = np.argsort(t)
+        axes[0].scatter(t, mag, c="black", s=1, label="Datos")
+        axes[0].plot(t[t_ord], trend[t_ord], c="red", lw=1.5,
+                     label=f"Modelo (T≈{long_period:.1f} d)")
+        axes[0].invert_yaxis()
+        axes[0].set_xlabel("t")
+        axes[0].set_ylabel("mag")
+        axes[0].set_title("Serie de tiempo")
+        axes[0].legend(fontsize=7)
+
+        # Panel 2: curva foldeada SIN detrending
+        axes[1].scatter(phases_og, mag_og, c="black", s=2)
+        axes[1].invert_yaxis()
+        axes[1].set_xlabel("Fase")
+        axes[1].set_ylabel("mag")
+        axes[1].set_title("Foldeada (sin detrending)")
+
+        # Panel 3: curva foldeada CON detrending
+        axes[2].scatter(phases_dt, mag_dt, c="black", s=2)
+        axes[2].invert_yaxis()
+        axes[2].set_xlabel("Fase")
+        axes[2].set_ylabel("mag")
+        axes[2].set_title("Foldeada (con detrending)")
+
+        plt.tight_layout()
+        plt.show()
