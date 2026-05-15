@@ -1,0 +1,71 @@
+=======================================================================
+             The Optical Gravitational Lensing Experiment.
+           Gaia South Ecliptic Pole Field as Seen by OGLE-IV.
+                          Variable Stars
+
+  I. Soszynski, A. Udalski, R. Poleski, S. Kozlowski, L. Wyrzykowski,
+P. Pietrukowicz, M.K. Szymanski, M. Kubiak, G. Pietrzynski, K. Ulaczyk,
+                           & J. Skowron
+
+=======================================================================
+soszynsk@astrouw.edu.pl
+
+This directory contains the catalog of variable stars in the Gaia South
+Ecliptic Pole field.
+
+The directory structure is as follows:
+
+README            - this file
+
+list.dat          - list of variable stars with their parameters
+
+remarks.txt       - remarks on selected objects
+
+phot/I/           - I-band photometry of individual objects
+phot/V/           - V-band photometry of individual objects
+phot.tar.gz       - gzipped phot/ directory
+
+fcharts/          - finding charts of individual objects
+
+ogle-sep-varstars.fits - FITS table version version of the list.dat file
+
+Format of the file list.dat:
+--------------------------------------------------------------------------
+ Bytes  Format Units   Description
+--------------------------------------------------------------------------
+  1- 15  A15   ---     OGLE-IV star's ID
+ 18- 19  I2    h       Right ascension, equinox J2000.0 (hours)
+ 21- 22  I2    m       Right ascension, equinox J2000.0 (minutes)
+ 24- 28  F5.2  s       Right ascension, equinox J2000.0 (seconds)
+     30  A1    ---     Declination, equinox J2000.0 (sign)
+ 31- 32  I2    deg     Declination, equinox J2000.0 (degrees)
+ 34- 35  I2    arcmin  Declination, equinox J2000.0 (arc minutes)
+ 37- 40  F4.1  arcsec  Declination, equinox J2000.0 (arc seconds)
+ 42- 46  A5    ---     Variability type
+ 48- 52  A5    ---     Subtype or secondary variability type
+ 55- 60  F6.3  mag     Intensity mean I-band magnitude
+ 62- 67  F6.3  mag     Intensity mean V-band magnitude
+ 69- 80  F     days    Period (if available)
+ 82- 86  F5.3  mag     I-band amplitude (for periodic variables)
+ 88- 99  F     days    Secondary period (if available)
+--------------------------------------------------------------------------
+
+
+Format of the files with photometry (phot/I/ID.dat and phot/V/ID.dat):
+--------------------------------------------------------------------------
+ Bytes  Format Units   Description
+--------------------------------------------------------------------------
+  1- 10  F10.5 days    Heliocentric Julian Day - 2450000
+ 12- 17  F6.3  mag     Magnitude
+ 19- 23  F5.3  mag     Uncertainty of magnitude
+--------------------------------------------------------------------------
+
+
+Finding charts are gzipped PostScript images. These are 60"x60" subframes
+of the I-band reference frames centered on the star. White cross marks the
+star. North is up and East to the left.
+
+
+Any presentation of the scientific analysis or usage of the data from this
+catalog should include the appropriate reference(s) to OGLE paper(s).
+
